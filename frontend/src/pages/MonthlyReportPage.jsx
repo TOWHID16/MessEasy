@@ -1,18 +1,49 @@
 // src/pages/MonthlyReportPage.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../services/apiService.js';
 import Spinner from '../components/Spinner.jsx';
 import ThemedInput from '../components/ThemedInput.jsx';
 import { Check, Edit } from 'lucide-react';
 
-// ✅ This component is now simpler. It receives data as props and doesn't fetch it.
-const MonthlyReportPage = ({ isEditable = false, settlementData, loading, error, refetch }) => {
+// ✅ UPDATED: The component is now more robust
+const MonthlyReportPage = ({ isEditable = false, settlementData, loading: propLoading, error: propError, refetch }) => {
     const { token } = useAuth();
+    
+    // Internal state for when the component fetches its own data
+    const [internalSettlement, setInternalSettlement] = useState(null);
+    const [internalLoading, setInternalLoading] = useState(true);
+    const [internalError, setInternalError] = useState('');
+
+    // State for inline editing remains the same
     const [editingRowEmail, setEditingRowEmail] = useState(null);
     const [mealInputValue, setMealInputValue] = useState(0);
     const [editError, setEditError] = useState('');
+
+    const fetchSettlement = async () => {
+        try {
+            setInternalLoading(true);
+            const data = await apiService.getSettlement();
+            setInternalSettlement(data);
+        } catch (err) {
+            setInternalError(err.message);
+        } finally {
+            setInternalLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // If data is NOT passed down as a prop, fetch it.
+        if (!settlementData && token) {
+            fetchSettlement();
+        }
+    }, [settlementData, token]);
+
+    // Determine which data source to use (props or internal state)
+    const settlement = settlementData || internalSettlement;
+    const loading = propLoading !== undefined ? propLoading : internalLoading;
+    const error = propError || internalError;
 
     const handleEditClick = (member) => {
         setEditingRowEmail(member.email);
@@ -23,7 +54,13 @@ const MonthlyReportPage = ({ isEditable = false, settlementData, loading, error,
         try {
             await apiService.updateUserMeals(member.userId, mealInputValue);
             setEditingRowEmail(null);
-            refetch(); // Call the refetch function passed from the parent
+            // If a refetch function is provided (from SettlementManagementPage), use it.
+            // Otherwise, fetch the data internally.
+            if (refetch) {
+                refetch();
+            } else {
+                fetchSettlement();
+            }
         } catch (err) {
             console.error("Failed to update meals:", err);
             setEditError("Failed to update meals.");
@@ -32,7 +69,7 @@ const MonthlyReportPage = ({ isEditable = false, settlementData, loading, error,
 
     if (loading) return <Spinner />;
     if (error) return <p className="text-red-400">Error: {error}</p>;
-    if (!settlementData) return <p className="text-gray-400">No report data available for this month.</p>;
+    if (!settlement) return <p className="text-gray-400">No report data available for this month.</p>;
 
     return (
         <div>
@@ -40,15 +77,15 @@ const MonthlyReportPage = ({ isEditable = false, settlementData, loading, error,
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-gray-800 p-5 rounded-xl border border-gray-700">
                     <p className="text-gray-400">Total Expenses</p>
-                    <p className="text-2xl font-bold">৳{settlementData?.totalExpenses.toFixed(2)}</p>
+                    <p className="text-2xl font-bold">৳{settlement?.totalExpenses.toFixed(2)}</p>
                 </div>
                 <div className="bg-gray-800 p-5 rounded-xl border border-gray-700">
                     <p className="text-gray-400">Total Meals</p>
-                    <p className="text-2xl font-bold">{settlementData?.totalMeals}</p>
+                    <p className="text-2xl font-bold">{settlement?.totalMeals}</p>
                 </div>
                 <div className="bg-gray-800 p-5 rounded-xl border border-gray-700">
                     <p className="text-gray-400">Final Meal Rate</p>
-                    <p className="text-2xl font-bold text-[#fe5b56]">৳{settlementData?.mealRate.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-[#fe5b56]">৳{settlement?.mealRate.toFixed(2)}</p>
                 </div>
             </div>
 
@@ -67,7 +104,7 @@ const MonthlyReportPage = ({ isEditable = false, settlementData, loading, error,
                             </tr>
                         </thead>
                         <tbody>
-                            {settlementData?.report.map(item => (
+                            {settlement?.report.map(item => (
                                 <tr key={item.email} className="border-b border-gray-700 last:border-b-0">
                                     <td className="p-4 font-medium">{item.name}</td>
                                     <td className="p-4">
