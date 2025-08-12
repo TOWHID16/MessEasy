@@ -11,7 +11,24 @@ const allRoutes = require('./routes/index');
 const app = express();
 
 // --- Middlewares ---
-app.use(cors({ origin: 'http://localhost:5173' }));
+
+// ✅ UPDATED: This new CORS configuration allows both your local computer
+// and your live frontend to connect to the backend.
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://mess-easy.vercel.app' // Replace with your actual frontend URL if different
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  }
+}));
+
 app.use(express.json());
 
 
