@@ -1,4 +1,4 @@
-# MessEase - A Modern Mess Management System
+# MessEasy - A Modern Mess Management System
 
 MessEase is a full-stack web application designed to simplify and automate the management of shared living expenses and meals. Built with the MERN stack (MongoDB, Express.js, React, Node.js), this application provides a robust, multi-tenant platform where different messes can manage their finances independently and transparently.
 
