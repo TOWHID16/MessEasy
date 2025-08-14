@@ -13,19 +13,21 @@ const app = express();
 // --- Middlewares ---
 
 // ✅ UPDATED: This new CORS configuration allows both your local computer
-// and your live frontend to connect to the backend.
+// and your live Vercel frontend to connect to the backend.
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://mess-easy.vercel.app' // Replace with your actual frontend URL if different
+  'https://mess-easy.vercel.app' // Your live frontend URL
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true)
-    } else {
-      callback(new Error('Not allowed by CORS'))
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
     }
+    return callback(null, true);
   }
 }));
 
@@ -40,7 +42,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 // --- API Routes ---
 // This line tells your server to use your master router for any URL
-// that starts with '/api'. This is the central connection point.
+// that starts with '/api'.
 app.use('/api', allRoutes);
 
 
